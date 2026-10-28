@@ -1,0 +1,14 @@
+{
+    "required": true,
+    "package": "com.poseidon.tacz_tb_compat.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "refmap": "tacz_tb_compat.refmap.json",
+    "minVersion": "0.8",
+    "mixins": [
+        "AbstractGunItemMixin",
+        "ModernKineticGunScriptAPIMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}
