@@ -62,6 +62,34 @@ public final class BackpackAmmoService {
         return false;
     }
 
+    // Mirrors GunHudOverlay.handleInventoryAmmo so the HUD "reserve" number
+    // also includes backpack contents: IAmmo stacks add their count, matching
+    // IAmmoBox adds its stored count, and a creative box forces 9999.
+    public static int countBackpackAmmo(LivingEntity entity, ItemStack gunStack, int baseCount) {
+        if(!(entity instanceof Player player) || !TbCompatConfig.isEnabled()) {
+            return baseCount;
+        }
+        int total = baseCount;
+        for(BackpackAccess access : collectAccess(player)) {
+            IItemHandler storage = access.storage();
+            for(int i = 0; i < storage.getSlots(); i++) {
+                ItemStack stack = storage.getStackInSlot(i);
+                if(stack.isEmpty()) {
+                    continue;
+                }
+                if(stack.getItem() instanceof IAmmo ammo && ammo.isAmmoOfGun(gunStack, stack)) {
+                    total += stack.getCount();
+                } else if(stack.getItem() instanceof IAmmoBox ammoBox && ammoBox.isAmmoBoxOfGun(gunStack, stack)) {
+                    if(ammoBox.isAllTypeCreative(stack) || ammoBox.isCreative(stack)) {
+                        return 9999;
+                    }
+                    total += ammoBox.getAmmoCount(stack);
+                }
+            }
+        }
+        return total;
+    }
+
     // Guns that never extract real items (dummy/virtual ammo, or inventory-feed
     // guns when the shooter skips ammo checks) must not touch backpack storage.
     public static boolean usesVirtualAmmo(AbstractGunItem gun, ItemStack gunStack, LivingEntity shooter) {
