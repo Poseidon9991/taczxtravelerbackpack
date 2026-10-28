@@ -192,5 +192,8 @@ To compile against a different version, replace the jar in
   compat mod, so hard deps are intentional; no optional-facade needed.
 - `BackpackWrapper.fromStack` writes size-initialization NBT into the stack
   on first wrap (idempotent, same as TB does on open).
-- Server-side only for mutations: both the wrap and consume paths bail on
-  `level().isClientSide`.
+- **The ammo *scan* must run on the client too** — `LocalPlayerReload` calls
+  `canReload` client-side to decide whether to send the reload packet, so a
+  client-blocked check silently prevents reload from starting. TB syncs the
+  worn backpack stack (with contents NBT) to clients, so reads work on both
+  sides; only `consumeFromBackpacks` stays server-gated.

@@ -35,8 +35,13 @@ public final class BackpackAmmoService {
 
     // Mirrors the slot scan inside TaCZ's canReload / hasAmmoToConsume lambdas:
     // any IAmmo stack matching the gun, or any IAmmoBox matching the gun.
+    //
+    // Read-only and safe on the client — LocalPlayerReload gates the reload
+    // packet on a client-side canReload check, so the scan must work there or
+    // reload never starts. Traveler's Backpack syncs the worn backpack (with
+    // contents) to clients, and inventory stacks are already local.
     public static boolean hasBackpackAmmo(LivingEntity entity, ItemStack gunStack) {
-        if(!(entity instanceof Player player) || entity.level().isClientSide || !TbCompatConfig.isEnabled()) {
+        if(!(entity instanceof Player player) || !TbCompatConfig.isEnabled()) {
             return false;
         }
         for(BackpackAccess access : collectAccess(player)) {
