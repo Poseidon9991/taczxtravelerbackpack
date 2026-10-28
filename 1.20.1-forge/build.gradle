@@ -109,8 +109,9 @@ dependencies {
 
     // TaCZ — hard dependency; we mixin into its gun item + kinetic script API.
     // Raw production jar: we only call its own mod-defined APIs and mixin into
-    // methods whose names are stable in dev and prod.
-    implementation files('libs/tacz-1.20.1-1.1.8.jar')
+    // methods whose names are stable in dev and prod. Every API we use is
+    // identical across TaCZ 1.1.5 -> 1.1.8-hotfix2 (verified per-jar).
+    implementation files('libs/tacz-1.20.1-1.1.8-hotfix2.jar')
 
     // Traveler's Backpack — hard dependency; we read its player capability and
     // BackpackWrapper storage handlers.
