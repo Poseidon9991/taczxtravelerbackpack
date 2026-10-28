@@ -34,8 +34,9 @@ method we reuse directly for backpack extraction.
 TaCZ method
     │
     ├─ query path ──────────────────────────────┐
-    │  @Redirect getCapability(ITEM_HANDLER)    │  read-only
-    │  → MergedAmmoView(vanilla + backpacks)    │
+    │  vanilla runs first, returns false        │  read-only
+    │  @Inject RETURN → scan backpacks          │
+    │  → setReturnValue(true) on a hit          │
     │                                           │
     └─ consume path ────────────────────────────┤
        consumeAmmoFromPlayer native run first   │  mutating
@@ -44,26 +45,26 @@ TaCZ method
        findAndExtractInventoryAmmo              │
 ```
 
-### Query path — merged view
+### Query path — RETURN top-up (why not @Redirect)
 
-`@Redirect` on the `getCapability(Capability, Direction)` invoke inside
-`canReload`, `hasInventoryAmmo`, `hasAmmoToConsume`. The replacement calls the
-real capability, then `BackpackAmmoService.wrapForAmmoQuery` wraps it:
+**v1.0.0 used `@Redirect` on the `getCapability` invoke — that is a bug.** A
+`@Redirect` is *exclusive*: the first mod to apply consumes the instruction
+and later redirects find nothing to match (`(0/1) succeeded` →
+`MixinTransformerError` at boot). With the TaCZ × Sophisticated Backpacks
+addon (`taczaddon`) installed, both mods crashed each other.
 
-```java
-original.lazyMap(vanilla -> new MergedAmmoView(vanilla, backpackHandlers))
-```
+`@Inject(at = @At("RETURN"))` composes: every mod can inspect and override the
+return value without fighting for the instruction. So all three query methods
+now:
 
-- `lazyMap` keeps `LazyOptional` semantics — the merged optional invalidates
-  together with the original one.
-- If the original optional is empty (non-player, weird entity), we fall back
-  to `LazyOptional.of(merged-view-without-vanilla)`.
-- `MergedAmmoView` is a read-mostly concatenation: slot indices map across
-  `vanilla handler | backpack#1 | backpack#2 | ...`. Insert/extract delegate
-  to the underlying handler for safety, but TaCZ only ever calls
-  `getStackInSlot` here.
-- Backpack views are `BackpackWrapper.getStorageForInputOutput()` — a
-  `StorageAccessWrapper` that honors TB's unsortable-slot and voiding rules.
+1. let vanilla run (inventory-only answer), then
+2. if it returned `false`, scan backpack storage with the *same* check TaCZ's
+   lambdas use — `IAmmo.isAmmoOfGun` / `IAmmoBox.isAmmoBoxOfGun` — and flip
+   the result to `true`.
+
+`BackpackAmmoService.hasBackpackAmmo(entity, gunStack)` does that scan over
+each backpack's `StorageAccessWrapper` (`getStorageForInputOutput()`), which
+honors TB's unsortable-slot rules.
 
 ### Consume path — remainder top-up
 
@@ -136,6 +137,10 @@ Without this, drained ammo-box counts would revert on world reload.
   Without this the annotation processor fails: *"Unable to locate obfuscation
   mapping"*.
 - Injected members use the `tacztb$` prefix.
+- **Never `@Redirect` (or `@ModifyExpressionValue`/`@Overwrite`) on TaCZ's
+  capability lookups** — other backpack-compat mods hook the same spots and
+  exclusive redirects hard-crash whoever applies second. Prefer RETURN
+  injects that OR-in our result.
 - `defaultRequire: 1` in `tacz_tb_compat.mixins.json` — if TaCZ ever moves a
   hook point, the game crashes loudly at first use instead of silently losing
   backpack support.
@@ -179,7 +184,8 @@ To compile against a different version, replace the jar in
 ## Gotchas
 
 - `LazyOptional.map` returns `Optional`, **not** `LazyOptional` — use
-  `lazyMap` to compose optionals.
+  `lazyMap` to compose optionals (relevant if a merged handler view is ever
+  reintroduced).
 - `registerConfig` on `ModLoadingContext.get()` is deprecated in Forge 47 —
   take `FMLJavaModLoadingContext` in the mod constructor instead.
 - Both dependencies are declared `mandatory` in `mods.toml` — this is a pure

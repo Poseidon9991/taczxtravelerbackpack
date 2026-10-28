@@ -5,12 +5,13 @@ import com.tiviacz.travelersbackpack.capability.CapabilityUtils;
 import com.tiviacz.travelersbackpack.inventory.BackpackWrapper;
 import com.tiviacz.travelersbackpack.items.TravelersBackpackItem;
 import com.tacz.guns.api.entity.IGunOperator;
+import com.tacz.guns.api.item.IAmmo;
+import com.tacz.guns.api.item.IAmmoBox;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
@@ -20,8 +21,9 @@ import java.util.List;
 // Bridge between TaCZ's ammo flow and Traveler's Backpack storage.
 //
 // Query path (canReload / hasInventoryAmmo / hasAmmoToConsume): our mixins
-// redirect the shooter.getCapability(ITEM_HANDLER) call so TaCZ sees a merged
-// view of the normal inventory plus every available backpack storage.
+// inject at RETURN and flip a "false" result to "true" when a backpack holds
+// compatible ammo. This composes with other compat mods, unlike @Redirect on
+// the capability lookup which is exclusive.
 //
 // Consume path (consumeAmmoFromPlayer): TaCZ drains the normal inventory first;
 // our mixin then extracts the remaining amount from backpacks and bumps the
@@ -31,29 +33,36 @@ public final class BackpackAmmoService {
     private BackpackAmmoService() {
     }
 
+    // Mirrors the slot scan inside TaCZ's canReload / hasAmmoToConsume lambdas:
+    // any IAmmo stack matching the gun, or any IAmmoBox matching the gun.
+    public static boolean hasBackpackAmmo(LivingEntity entity, ItemStack gunStack) {
+        if(!(entity instanceof Player player) || entity.level().isClientSide || !TbCompatConfig.isEnabled()) {
+            return false;
+        }
+        for(BackpackAccess access : collectAccess(player)) {
+            IItemHandler storage = access.storage();
+            for(int i = 0; i < storage.getSlots(); i++) {
+                ItemStack stack = storage.getStackInSlot(i);
+                if(stack.isEmpty()) {
+                    continue;
+                }
+                if(stack.getItem() instanceof IAmmo ammo && ammo.isAmmoOfGun(gunStack, stack)) {
+                    return true;
+                }
+                if(stack.getItem() instanceof IAmmoBox ammoBox && ammoBox.isAmmoBoxOfGun(gunStack, stack)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // Guns that never extract real items (dummy/virtual ammo, or inventory-feed
     // guns when the shooter skips ammo checks) must not touch backpack storage.
     public static boolean usesVirtualAmmo(AbstractGunItem gun, ItemStack gunStack, LivingEntity shooter) {
         IGunOperator operator = IGunOperator.fromLivingEntity(shooter);
         boolean needsAmmoCheck = operator != null && operator.needCheckAmmo();
         return (gun.useInventoryAmmo(gunStack) && !needsAmmoCheck) || gun.useDummyAmmo(gunStack);
-    }
-
-    public static LazyOptional<IItemHandler> wrapForAmmoQuery(LazyOptional<IItemHandler> original, LivingEntity entity) {
-        if(!(entity instanceof Player player) || entity.level().isClientSide || !TbCompatConfig.isEnabled()) {
-            return original;
-        }
-
-        List<IItemHandler> backpackHandlers = new ArrayList<>();
-        for(BackpackAccess access : collectAccess(player)) {
-            backpackHandlers.add(access.storage());
-        }
-        if(backpackHandlers.isEmpty()) {
-            return original;
-        }
-
-        LazyOptional<IItemHandler> merged = original.lazyMap(vanilla -> new MergedAmmoView(vanilla, backpackHandlers));
-        return merged.isPresent() ? merged : LazyOptional.of(() -> new MergedAmmoView(null, backpackHandlers));
     }
 
     public static int consumeFromBackpacks(Player player, AbstractGunItem gun, ItemStack gunStack, int remaining) {
