@@ -1,12 +1,38 @@
-build/
-run/
-run-data/
-.gradle/
-out/
-*.launch
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
 .classpath
 .project
 .settings/
 bin/
-.idea/
-*.iml
+out/
+*.launch
+.vscode/
+
+# Mod jars used as compile-only dependencies (download into libs/, see
+# DEVELOPMENT.md). Never commit third-party mod binaries.
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+
+# Game runs
+run/
+run-data/
+
+# OS
+Thumbs.db
+.DS_Store

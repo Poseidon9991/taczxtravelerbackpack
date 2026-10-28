@@ -169,7 +169,12 @@ To compile against a different version, replace the jar in
 - ForgeGradle 6 + Parchment `2023.08.20-1.20.1` + MixinGradle 0.7, Java 17
 - `gradlew build` → `build/libs/tacz_tb_compat-<version>.jar` (reobf'd)
 - `libs/` holds compile-only mod jars (TaCZ, Traveler's Backpack) — they are
-  file dependencies, not resolved from a maven.
+  file dependencies, not resolved from a maven. `*.jar` is gitignored, so on a
+  fresh clone download these into `1.20.1-forge/libs/`:
+  - `tacz-1.20.1-1.1.8-hotfix2.jar` —
+    https://modrinth.com/mod/timeless-and-classics-zero
+  - `travelersbackpack-forge-1.20.1-9.1.58.jar` —
+    https://modrinth.com/mod/travelersbackpack
 
 ## Gotchas
 
