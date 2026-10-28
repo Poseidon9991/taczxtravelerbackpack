@@ -63,6 +63,3 @@ Changes apply live on config reload — no restart needed on dedicated servers.
 
 - [TaCZ](https://www.curseforge.com/minecraft/mc-mods/timeless-and-classics-zero-tacz) by MCModderAnchor
 - [Traveler's Backpack](https://www.curseforge.com/minecraft/mc-mods/travelers-backpack) by Tiviacz1337
-- Design inspired by the
-  [TaCZ × Sophisticated Backpacks](https://www.curseforge.com/minecraft/mc-mods/tacz-sophisticated-backpacks-compatibility-addon)
-  addon
