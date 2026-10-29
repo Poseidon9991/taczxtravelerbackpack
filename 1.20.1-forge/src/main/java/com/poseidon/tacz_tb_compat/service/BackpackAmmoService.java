@@ -121,12 +121,20 @@ public final class BackpackAmmoService {
         List<BackpackAccess> out = new ArrayList<>();
 
         if(TbCompatConfig.wornEnabled()) {
-            CapabilityUtils.getCapability(player).ifPresent(cap -> {
-                if(cap.hasBackpack()) {
-                    BackpackWrapper wrapper = cap.getWrapper() != null ? cap.getWrapper() : BackpackWrapper.fromStack(cap.getBackpack());
-                    out.add(new BackpackAccess(wrapper));
+            // getBackpackWrapper covers both worn states: the Curios slot when
+            // TB's curios integration is active, and the ITravelersBackpack
+            // capability otherwise. Reading the capability directly misses
+            // curios-equipped backpacks entirely.
+            BackpackWrapper worn = CapabilityUtils.getBackpackWrapper(player);
+            if(worn == null) {
+                ItemStack wornStack = CapabilityUtils.getWearingBackpack(player);
+                if(!wornStack.isEmpty()) {
+                    worn = BackpackWrapper.fromStack(wornStack);
                 }
-            });
+            }
+            if(worn != null) {
+                out.add(new BackpackAccess(worn));
+            }
         }
 
         if(TbCompatConfig.inventoryEnabled()) {

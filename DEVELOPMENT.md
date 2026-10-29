@@ -107,9 +107,13 @@ Mirrors the reference implementation's `usesNativeVirtualAmmo`.
 per call (no caching — wrappers are cheap, and caching would risk stale
 handlers after equip/slot moves):
 
-1. **Worn** — `CapabilityUtils.getCapability(player)` → `ITravelersBackpack`;
-   prefers `cap.getWrapper()` (the live wearable wrapper) falling back to
-   `BackpackWrapper.fromStack(cap.getBackpack())`.
+1. **Worn** — `CapabilityUtils.getBackpackWrapper(player)`, TB's own
+   integration-aware lookup: it returns the Curios-slot backpack when TB's
+   curios integration is active, and the `ITravelersBackpack` capability
+   wrapper otherwise. Reading the capability directly misses curios-equipped
+   backpacks — TB routes worn state through Curios when the mod is installed.
+   Fallback: `getWearingBackpack` + `BackpackWrapper.fromStack` if the call
+   returns null.
 2. **Inventory** — scans `player.getInventory()` for
    `TravelersBackpackItem` stacks → `BackpackWrapper.fromStack(stack)`.
 
