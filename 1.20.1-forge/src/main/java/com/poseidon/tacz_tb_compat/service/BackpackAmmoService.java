@@ -7,6 +7,7 @@ import com.tiviacz.travelersbackpack.items.TravelersBackpackItem;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.item.IAmmo;
 import com.tacz.guns.api.item.IAmmoBox;
+import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
@@ -44,6 +45,13 @@ public final class BackpackAmmoService {
         if(!(entity instanceof Player player) || !TbCompatConfig.isEnabled()) {
             return false;
         }
+        // Dummy-ammo guns feed from an internal pool and never touch item
+        // ammo. OR-ing the backpack scan would make hasAmmoToConsume lie while
+        // consumeAmmoFromPlayer stays on the dummy path, letting per-round
+        // reload scripts load rounds for free.
+        if(gunStack.getItem() instanceof IGun igun && igun.useDummyAmmo(gunStack)) {
+            return false;
+        }
         for(BackpackAccess access : collectAccess(player)) {
             IItemHandler storage = access.storage();
             for(int i = 0; i < storage.getSlots(); i++) {
@@ -51,10 +59,16 @@ public final class BackpackAmmoService {
                 if(stack.isEmpty()) {
                     continue;
                 }
-                if(stack.getItem() instanceof IAmmo ammo && ammo.isAmmoOfGun(gunStack, stack)) {
+                // Simulated extract mirrors what the consume path can really
+                // take: getStackInSlot alone reports ammo in slots the wrapper
+                // refuses to give back (unsortable slots), which would lie the
+                // same way.
+                if(stack.getItem() instanceof IAmmo ammo && ammo.isAmmoOfGun(gunStack, stack)
+                        && !storage.extractItem(i, 1, true).isEmpty()) {
                     return true;
                 }
-                if(stack.getItem() instanceof IAmmoBox ammoBox && ammoBox.isAmmoBoxOfGun(gunStack, stack)) {
+                if(stack.getItem() instanceof IAmmoBox ammoBox && ammoBox.isAmmoBoxOfGun(gunStack, stack)
+                        && ammoBox.getAmmoCount(stack) > 0) {
                     return true;
                 }
             }
